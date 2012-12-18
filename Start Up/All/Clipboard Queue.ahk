@@ -178,11 +178,12 @@
 Return ;EndRegion
 
 ;Region " Include Files "
-	; ; The following lines need to be un-commented to work as a stand-alone:
-	; #SingleInstance force
-	; #Include #Includes\ShowToolTip(tip[,time]).ahk
-	; #Include #Includes\GUIUniqueDefault().ahk
-	; #Include #Includes\ShowAccordian(top,middle,bottom[,options,progressOptions]).ahk
+	; The following lines need to be un-commented to work as a stand-alone:
+	; --EG
+	#SingleInstance force
+	#Include #Includes\ShowToolTip(tip[,time]), GUIShowTooltips([enabled]).ahk
+	#Include #Includes\GUIUniqueDefault().ahk
+	#Include #Includes\ShowAccordian(top,middle,bottom[,options,progressOptions]).ahk
 ;EndRegion
 
 
@@ -202,6 +203,13 @@ Return ;EndRegion
 		If ctrlState = D
 			ctrlKeyDownTemp := true
 		
+		; --EG
+		GetKeyState shiftState,Shift
+		shiftKeyDownTemp := false
+		If shiftState = D
+			shiftKeyDownTemp := true			
+		;
+		
 		; See if this window is "ignored":
 		IfWinActive ahk_group ClipQueueIgnore
 			Return
@@ -214,6 +222,12 @@ Return ;EndRegion
 		; Register quick Ctrl+C presses:
 		if (ctrlKeyDownTemp = true)
 			ctrlKeyDown := true
+			
+		; --EG
+		; Register quick Ctrl+Insert presses:
+		if (shiftKeyDownTemp = true)
+			shiftKeyDown := true
+		;
 	Return
 		
 ;EndRegion
@@ -223,7 +237,8 @@ Return ;EndRegion
 	;Region " Pasting "
 	
 	; Pressing Ctrl+V activates the paste dialog:
-	^v:: ;;; The $ sign is to prevent the shortcut from firing from "Send ^v"
+	$+Insert::	; --EG
+	$^v:: ;;; The $ sign is to prevent the shortcut from firing from "Send ^v"
 		; Make sure the cqIndex is in-bounds
 		If (cqIndex < 1)
 			cqIndex := 1
@@ -233,7 +248,9 @@ Return ;EndRegion
 		OnCtrlKeyRelease = SendPasteCommand
 		GoSub ShowClipQueueWindow
 		ctrlKeyDown := true ; this makes sure we register quick Ctrl+V presses.
+		shiftKeyDown := true ; this makes sure we register quick Ctrl+Insert presses.
 	Return
+	~^Insert Up::	; --EG
 	~^c Up:: ; ~ doesn't block the native action
 	~^x Up::
 		ctrlKeyDown := true ; This might help the delayed copy in some cases,
@@ -252,7 +269,7 @@ Return ;EndRegion
 			^h::
 			ClipQueueHelp_Escape:
 			ClipQueueHelp_Close:
-				GuiUniqueDestroy("ClipQueueHelp")
+				GUIUniqueDestroy("ClipQueueHelp")
 			Return
 		#IfWinExist AccordianClipQueue ; Only active if the ClipQueue list is visible
 
@@ -289,14 +306,14 @@ Return ;EndRegion
 		Return
 		
 		
-		
-
+		+Insert::	; --EG
 		^Down::
 		^v::
 			; Move selection down
 			GoSub NextClip
 
 			OnCtrlKeyRelease = SendPasteCommand
+			
 			GoSub ShowClipQueueWindow
 		Return
 		^Up::
@@ -307,6 +324,7 @@ Return ;EndRegion
 			OnCtrlKeyRelease = SendPasteCommand
 			GoSub ShowClipQueueWindow
 		Return
+		+Delete::	; --EG
 		^Delete::
 		^x::
 			; Delete selection
@@ -315,7 +333,7 @@ Return ;EndRegion
 			OnCtrlKeyRelease = 
 			GoSub ShowClipQueueWindow
 		Return
-		^Insert::
+		;^Insert::
 		^c::
 			; Copy the selected item to the "actual" clipboard
 			cqIndexOfActualClipboard := -1 ; Make sure we always load the clipboard
@@ -535,7 +553,8 @@ Return ;EndRegion
 					Yellow Text						= _CFGAAAA55 ForeGroundFFFF99 BackGroundTransparent
 					Blue Text						= _CFG5599AA ForeGround99CCFF BackGroundTransparent
 			)
-			clipQueueDefaults 						= _CFGGray ForeGroundBlack BackGroundWhite     GuiKeyClipQueue MonitorCaret FS12 FL20 
+			;clipQueueDefaults 						= _CFGGray ForeGroundBlack BackGroundWhite     GuiKeyClipQueue MonitorCaret FS12 FL20 
+			clipQueueDefaults 						= _CFGWhite ForeGroundBlack BackGroundGray     GuiKeyClipQueue MonitorCaret FS12 FL18	; --EG
 			; Note: _CFG---- is the ForeGround color if there is no action on release.
 			StringSplit options, clipQueueOptions, `n
 			; Increment & loop the index:
@@ -544,7 +563,8 @@ Return ;EndRegion
 				clipQueueOptionsIndex = 1
 			
 			StringSplit options, options%ClipQueueOptionsIndex%, =
-			ClipQueueDisplayOptions := options2 . " " . clipQueueDefaults . " "
+			;ClipQueueDisplayOptions := options2 . " " . clipQueueDefaults . " "
+			ClipQueueDisplayOptions := options3 . " " . clipQueueDefaults . " "	; --EG
 		Return
 		
 		;EndRegion
@@ -1343,6 +1363,12 @@ Return ;EndRegion
 			GoSub LoadClipboard
 			; Paste the contents:
 			Send ^v
+			
+			; --EG
+			; Delete selection
+			GoSub RemoveClip
+			;
+			
 		Return
 		LoadClipboard: ; Inputs cqIndex and loads the clipboard
 			; Improve performance by keeping track of the actual clipboard
@@ -1376,6 +1402,13 @@ Return ;EndRegion
 			If ctrlState = D
 				ctrlKeyDown := true
 				
+			; --EG
+			GetKeyState shiftState,Shift
+			shiftKeyDown := false
+			If shiftState = D
+				shiftState := true			
+			;
+			
 			; Create our "Accordian" display:
 			AccordianText =
 			Top =
@@ -1390,13 +1423,13 @@ Return ;EndRegion
 				If (A_Index < cqIndex) {
 					If Top !=
 						Top .= "`n"
-					Top .= display
+					Top := Top . "(" . A_Index . ") " . display	; --EG
 				} Else If (A_Index = cqIndex) {
-					Middle := display
+					Middle := "(" . A_Index . ") " . display	; --EG
 				} Else {
 					If Bottom !=
 						Bottom .= "`n"
-					Bottom .= display
+					Bottom := Bottom . "(" . A_Index . ") " . display	; --EG
 				}
 			}
 			
@@ -1430,10 +1463,21 @@ Return ;EndRegion
 					Return ; Keep waiting for the Ctrl key release
 				}
 				
+				; --EG
+				; Get the status of the Shift key:
+				GetKeyState shiftState,Shift
+				If shiftState = D
+				{	shiftKeyDown := true
+					Return ; Keep waiting for the Shift key release
+				}
+				;
+				
 				; The Ctrl key must be up:
+				; OR the Shift key must be up:
 				
 				; See if we should hide the window:
-				If (!ctrlKeyDown AND _SplashClipQueueWindowDelay > 0) ; The Ctrl key was never down, so we are still waiting
+				;If (!ctrlKeyDown AND _SplashClipQueueWindowDelay > 0) ; The Ctrl key was never down, so we are still waiting
+				If (!(ctrlKeyDown OR shiftKeyDown) AND _SplashClipQueueWindowDelay > 0) ; The Ctrl or Shift key was never down, so we are still --EG waiting
 					Return
 
 			CloseClipQueueWindow:
